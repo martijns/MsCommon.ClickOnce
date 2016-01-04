@@ -23,6 +23,9 @@ namespace MsCommon.ClickOnce
             tbReport.Text = string.Join("\r\n", _collectedData.Keys.Cast<string>().Select(k => k + ": " + _collectedData[k]).ToArray());
             this.AcceptButton = btnYes;
             this.CancelButton = btnNo;
+
+            if (Debugger.IsAttached)
+                Debugger.Break();
         }
 
         private void HandleFormLoad(object sender, EventArgs e)

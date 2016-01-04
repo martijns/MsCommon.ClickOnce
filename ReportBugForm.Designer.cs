@@ -118,7 +118,6 @@
             this.Name = "ReportBugForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Unexpected error!";
-            this.TopMost = true;
             this.Load += new System.EventHandler(this.HandleFormLoad);
             this.ResumeLayout(false);
             this.PerformLayout();

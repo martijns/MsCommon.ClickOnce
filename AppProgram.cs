@@ -9,6 +9,7 @@ namespace MsCommon.ClickOnce
             string applicationName,
             string authorName,
             string reportBugEndpoint,
+            string feedbackEndpoint,
             Action<string[]> mainMethod,
             string[] args)
         {
@@ -18,16 +19,18 @@ namespace MsCommon.ClickOnce
                 AppVersion.AppName = applicationName;
                 AppVersion.AuthorName = authorName;
                 ReportBugForm.ReportBugEndpoint = reportBugEndpoint;
+                FeedbackForm.FeedbackEndpoint = feedbackEndpoint;
 
                 // If this application is started the ClickOnce-way, arguments are passed in a different way
                 try
                 {
-                    if (AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData != null)
+                    if (AppDomain.CurrentDomain.SetupInformation.ActivationArguments != null &&
+                        AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData != null)
                     {
                         args = AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Don't bother with handling
                 }
@@ -55,7 +58,7 @@ namespace MsCommon.ClickOnce
             {
                 if (Application.MessageLoop)
                 {
-                    new ReportBugForm(ex).ShowDialog();
+                    new ReportBugForm(ex).ShowDialog(Application.OpenForms[0]);
                 }
                 else
                 {

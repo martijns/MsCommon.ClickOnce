@@ -1,4 +1,5 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Deployment.Application;
 using System.Drawing;
 using System.IO;
@@ -12,6 +13,8 @@ namespace MsCommon.ClickOnce
 {
     public static class AppVersion
     {
+        private static readonly ILog Logger = LogManager.GetLogger(typeof(AppVersion));
+
         public static string AuthorName { get; set; }
 
         public static string AppName { get; set; }
@@ -30,8 +33,13 @@ namespace MsCommon.ClickOnce
         {
             if (ApplicationDeployment.IsNetworkDeployed)
             {
+                Logger.Info("Checking for updates...");
                 ApplicationDeployment.CurrentDeployment.CheckForUpdateCompleted += HandleCheckForUpdateCompleted;
                 ApplicationDeployment.CurrentDeployment.CheckForUpdateAsync();
+            }
+            else
+            {
+                Logger.Warn("The application is running standalone instead of using ClickOnce. Automatic updates are therefore not available. Consider updating the shortcut you use to start the application!");
             }
         }
 
@@ -39,6 +47,7 @@ namespace MsCommon.ClickOnce
         {
             if (e.UpdateAvailable)
             {
+                Logger.InfoFormat("An update is vailable ({0})...", ToVersionString(e.AvailableVersion));
                 ApplicationDeployment.CurrentDeployment.Update();
 
                 StringBuilder sb = new StringBuilder();
@@ -59,6 +68,10 @@ namespace MsCommon.ClickOnce
                             Application.Restart();
                     }));
                 }
+            }
+            else
+            {
+                Logger.InfoFormat("No update available...");
             }
         }
 

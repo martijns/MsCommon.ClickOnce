@@ -67,7 +67,7 @@ namespace MsCommon.ClickOnce
                 File.Delete(randomfilename);
                 return true;
             }
-            catch (Exception fex)
+            catch (Exception)
             {
                 return false;
             }
@@ -88,7 +88,7 @@ namespace MsCommon.ClickOnce
                             return obj as T;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // loading failed, start anew
                 }
