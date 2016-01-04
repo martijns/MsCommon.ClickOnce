@@ -22,7 +22,8 @@ namespace MsCommon.ClickOnce
                 // If this application is started the ClickOnce-way, arguments are passed in a different way
                 try
                 {
-                    if (AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData != null)
+                    if (AppDomain.CurrentDomain.SetupInformation.ActivationArguments != null &&
+                        AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData != null)
                     {
                         args = AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData;
                     }
