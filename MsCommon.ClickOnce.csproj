@@ -51,6 +51,9 @@
   <ItemGroup>
     <Compile Include="AppConfiguration.cs" />
     <Compile Include="AppProgram.cs" />
+    <Compile Include="AppForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Extensions\EnumerationExtensions.cs" />
     <Compile Include="FlashWindow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -75,6 +78,9 @@
     <Compile Include="SerializableDictionary.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="AppForm.resx">
+      <DependentUpon>AppForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FeedbackForm.resx">
       <DependentUpon>FeedbackForm.cs</DependentUpon>
     </EmbeddedResource>
