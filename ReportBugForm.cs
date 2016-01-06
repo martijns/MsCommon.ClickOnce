@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace MsCommon.ClickOnce
 {
-    public partial class ReportBugForm : Form
+    public partial class ReportBugForm : AppForm
     {
         public static string ReportBugEndpoint { get; set; }
 
@@ -35,11 +35,16 @@ namespace MsCommon.ClickOnce
             btnYes.Focus();
         }
 
+        private void ButtonState(bool enabled)
+        {
+            btnYes.Enabled = enabled;
+            btnNo.Enabled = enabled;
+            tbCustomMessage.Enabled = enabled;
+        }
+
         private async void HandleYesClicked(object sender, EventArgs e)
         {
-            btnYes.Enabled = false;
-            btnNo.Enabled = false;
-            tbCustomMessage.Enabled = false;
+            ButtonState(false);
             _collectedData["custommessage"] = tbCustomMessage.Text;
             UpdateStatus(Color.Blue, "Submitting...");
             using (var client = new WebClient())
@@ -55,11 +60,13 @@ namespace MsCommon.ClickOnce
                     else
                     {
                         UpdateStatus(Color.Red, "Server error: " + responseStr);
+                        ButtonState(true);
                     }
                 }
                 catch (Exception uploadex)
                 {
                     UpdateStatus(Color.Red, "Failed to submit: " + uploadex.Message);
+                    ButtonState(true);
                 }
             }
         }

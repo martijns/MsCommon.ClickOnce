@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using ApplicationDeployment = System.Deployment.Application.ApplicationDeployment;
 
@@ -29,21 +30,31 @@ namespace MsCommon.ClickOnce
             return "0.0.0.0";
         }
 
-        public static void CheckForUpdateAsync()
+        public static async Task CheckForUpdateAsync()
         {
-            if (ApplicationDeployment.IsNetworkDeployed)
+            await Task.Run(() =>
             {
-                Logger.Info("Checking for updates...");
-                ApplicationDeployment.CurrentDeployment.CheckForUpdateCompleted += HandleCheckForUpdateCompleted;
-                ApplicationDeployment.CurrentDeployment.CheckForUpdateAsync();
-            }
-            else
-            {
-                Logger.Warn("The application is running standalone instead of using ClickOnce. Automatic updates are therefore not available. Consider updating the shortcut you use to start the application!");
-            }
+                if (ApplicationDeployment.IsNetworkDeployed)
+                {
+                    Logger.Info("Checking for updates...");
+                    try
+                    {
+                        var updateInfo = ApplicationDeployment.CurrentDeployment.CheckForDetailedUpdate();
+                        HandleCheckForUpdateCompleted(updateInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn("Failed checking for updates: " + ex.GetType().Name + ": " + ex.Message);
+                    }
+                }
+                else
+                {
+                    Logger.Warn("The application is running standalone instead of using ClickOnce. Automatic updates are therefore not available. Consider updating the shortcut you use to start the application!");
+                }
+            });
         }
 
-        private static void HandleCheckForUpdateCompleted(object sender, CheckForUpdateCompletedEventArgs e)
+        private static void HandleCheckForUpdateCompleted(UpdateCheckInfo e)
         {
             if (e.UpdateAvailable)
             {

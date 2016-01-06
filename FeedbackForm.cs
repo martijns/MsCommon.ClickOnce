@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace MsCommon.ClickOnce
 {
-    public partial class FeedbackForm : Form
+    public partial class FeedbackForm : AppForm
     {
         public static string FeedbackEndpoint { get; set; }
 
@@ -32,14 +32,18 @@ namespace MsCommon.ClickOnce
             btnSubmit.Focus();
         }
 
+        private void ButtonState(bool enabled)
+        {
+            btnSubmit.Enabled = enabled;
+            btnCancel.Enabled = enabled;
+            tbMessage.ReadOnly = !enabled;
+            rbHappy.Enabled = enabled;
+            rbSad.Enabled = enabled;
+        }
+
         private async void HandleSubmitClicked(object sender, EventArgs e)
         {
-            btnSubmit.Enabled = false;
-            btnCancel.Enabled = false;
-            tbMessage.ReadOnly = true;
-            rbHappy.Enabled = false;
-            rbSad.Enabled = false;
-
+            ButtonState(false);
             var data = new NameValueCollection();
             data["appname"] = AppVersion.AppName;
             data["appversion"] = AppVersion.GetVersion();
@@ -59,11 +63,13 @@ namespace MsCommon.ClickOnce
                     else
                     {
                         UpdateStatus(Color.Red, "Oops: " + responseStr);
+                        ButtonState(true);
                     }
                 }
                 catch (Exception uploadex)
                 {
                     UpdateStatus(Color.Red, "Failed to submit: " + uploadex.Message);
+                    ButtonState(true);
                 }
             }
         }

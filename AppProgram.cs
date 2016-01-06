@@ -1,10 +1,14 @@
-﻿using System;
+﻿using log4net;
+using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MsCommon.ClickOnce
 {
     public class AppProgram
     {
+        private static readonly ILog Logger = LogManager.GetLogger(typeof(AppProgram));
+
         public static void Start(
             string applicationName,
             string authorName,
@@ -37,6 +41,7 @@ namespace MsCommon.ClickOnce
 
                 // Catch unhandled exceptions
                 AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
+                TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
 
                 // Run the main method
                 mainMethod(args);
@@ -48,12 +53,19 @@ namespace MsCommon.ClickOnce
             }
         }
 
+        internal static void HandleUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            Logger.Error("HandleUnobservedTaskException", e.Exception);
+            HandleUnhandledException(sender, new UnhandledExceptionEventArgs(e.Exception, false));
+        }
+
         internal static void HandleUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             Exception ex = e.ExceptionObject as Exception;
             if (ex == null)
                 return;
 
+            Logger.Error("HandleUnhandledException", ex);
             try
             {
                 if (Application.MessageLoop)
