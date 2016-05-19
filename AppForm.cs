@@ -2,6 +2,7 @@
 using log4net.Appender;
 using log4net.Core;
 using log4net.Repository.Hierarchy;
+using MsCommon.ClickOnce.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -19,13 +20,12 @@ namespace MsCommon.ClickOnce
     {
         private static readonly ILog Logger = LogManager.GetLogger(typeof(AppForm));
 
-        private Dictionary<Control, bool> controlState = new Dictionary<Control, bool>();
-        private int busyCount = 0;
-        private bool isBusy = false;
         private System.ComponentModel.IContainer components;
         private ContextMenuStrip lbLogContextMenuStrip;
         private ToolStripMenuItem copyToolStripMenuItem;
         private ContextMenuStrip contextMenuStrip1;
+        private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem clearToolStripMenuItem;
         private ListBox lbLog;
 
         public AppForm()
@@ -34,13 +34,19 @@ namespace MsCommon.ClickOnce
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(GetType());
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             ((Hierarchy)LogManager.GetRepository()).Root.AddAppender(this);
+            this.Load += HandleAppFormLoad;
+        }
+
+        private void HandleAppFormLoad(object sender, EventArgs e)
+        {
+            BringToFront();
         }
 
         #region PerformWork & PerformWorkAsync
 
-        public void PerformWork(AppForm control, Action bgwork, Action fgwork, Action<Exception> customErrorHandler = null)
+        public void PerformWork(Action bgwork, Action fgwork, Action<Exception> customErrorHandler = null)
         {
-            control.IsBusy = true;
+            this.SetBusy(true);
             new Thread(() =>
             {
                 Exception exception = null;
@@ -53,7 +59,7 @@ namespace MsCommon.ClickOnce
                 {
                     exception = ex;
                 }
-                control.Invoke((Action)(() =>
+                Invoke((Action)(() =>
                 {
                     if (exception != null)
                     {
@@ -61,7 +67,7 @@ namespace MsCommon.ClickOnce
                             customErrorHandler(exception);
                         else
                             new ReportBugForm(exception).ShowDialog(this);
-                        IsBusy = false;
+                        this.SetBusy(false);
                         return;
                     }
                     try
@@ -75,17 +81,17 @@ namespace MsCommon.ClickOnce
                     }
                     finally
                     {
-                        IsBusy = false;
+                        this.SetBusy(false);
                     }
                 }));
             }).Start();
         }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async Task PerformWorkAsync(AppForm control, Func<Task> bgwork, Func<Task> fgwork, Action<Exception> customErrorHandler = null)
+        public async Task PerformWorkAsync(Func<Task> bgwork, Func<Task> fgwork, Action<Exception> customErrorHandler = null)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
-            control.IsBusy = true;
+            this.SetBusy(true);
             await Task.Factory.StartNew(async () =>
             {
                 Exception exception = null;
@@ -98,7 +104,7 @@ namespace MsCommon.ClickOnce
                 {
                     exception = ex;
                 }
-                control.Invoke((Func<Task>)(async () =>
+                Delegate method = (Func<Task>)(async () =>
                 {
                     if (exception != null)
                     {
@@ -106,7 +112,7 @@ namespace MsCommon.ClickOnce
                             customErrorHandler(exception);
                         else
                             new ReportBugForm(exception).ShowDialog(this);
-                        IsBusy = false;
+                        this.SetBusy(false);
                         return;
                     }
                     try
@@ -120,121 +126,14 @@ namespace MsCommon.ClickOnce
                     }
                     finally
                     {
-                        IsBusy = false;
+                        this.SetBusy(false);
                     }
-                }));
+                });
+                if (InvokeRequired)
+                    Invoke(method);
+                else
+                    method.DynamicInvoke();
             });
-        }
-
-        #endregion
-
-        #region Busy & ControlState
-
-        public bool IsBusy
-        {
-            get
-            {
-                return isBusy;
-            }
-            set
-            {
-                if (value)
-                    busyCount++;
-                else
-                    busyCount--;
-
-                if (isBusy && busyCount == 0)
-                    DisableBusy();
-                else if (!isBusy && busyCount == 1)
-                    EnableBusy();
-            }
-        }
-
-        private void EnableBusy()
-        {
-            isBusy = true;
-            controlState.Clear();
-            RecursiveDisable(this);
-            Cursor.Current = Cursors.WaitCursor;
-        }
-
-        private void RecursiveDisable(Control c)
-        {
-            foreach (Control inner in c.Controls)
-                RecursiveDisable(inner);
-            SaveControlStateAndDisable(c);
-        }
-
-        private void DisableBusy()
-        {
-            isBusy = false;
-            RecursiveRestore(this);
-            Cursor.Current = Cursors.Default;
-        }
-
-        private void RecursiveRestore(Control c)
-        {
-            foreach (Control inner in c.Controls)
-                RecursiveRestore(inner);
-            RestoreControlState(c);
-
-            // Controls could be removed in the meantime. To prevent odd behaviour, we explicitely restore the state of each recorded control
-            foreach (Control control in controlState.Keys)
-            {
-                RestoreControlState(control);
-            }
-        }
-
-        public void UpdateControlEnabledState(Control control, bool enabled)
-        {
-            if (IsBusy)
-            {
-                if (controlState.ContainsKey(control))
-                    controlState[control] = enabled;
-                else
-                    controlState.Add(control, enabled);
-            }
-            else
-            {
-                control.Enabled = enabled;
-            }
-        }
-
-
-        private void SaveControlStateAndDisable(Control control)
-        {
-            if (control is Form)
-                return;
-            controlState.Add(control, control.Enabled);
-            if (control.Tag is string && (string)control.Tag == "KEEP_ENABLED")
-                return;
-            control.Enabled = false;
-            if (control is DataGridView)
-            {
-                var dgv = (DataGridView)control;
-                dgv.ForeColor = Color.Gray;
-                dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.Gray;
-            }
-        }
-        
-        private void RestoreControlState(Control control)
-        {
-            if (control is Form)
-                return;
-            if (controlState.ContainsKey(control))
-            {
-                control.Enabled = controlState[control];
-                if (control is DataGridView)
-                {
-                    var dgv = (DataGridView)control;
-                    dgv.ForeColor = Control.DefaultForeColor;
-                    dgv.ColumnHeadersDefaultCellStyle.ForeColor = Control.DefaultForeColor;
-                    foreach (Control scrollbar in dgv.Controls)
-                    {
-                        scrollbar.Enabled = controlState[control]; // Enable if parent is enabled
-                    }
-                }
-            }
         }
 
         #endregion
@@ -389,6 +288,14 @@ namespace MsCommon.ClickOnce
             Clipboard.SetText(string.Join("\r\n", selectedLog));
         }
 
+        private void HandleLogClearClicked(object sender, EventArgs e)
+        {
+            if (lbLog == null)
+                return;
+
+            lbLog.Items.Clear();
+        }
+
         protected void LogMethodEntry([CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
         {
             Logger.DebugFormat("=> {0}.{1}:{2}", Path.GetFileNameWithoutExtension(file), member, line);
@@ -402,20 +309,24 @@ namespace MsCommon.ClickOnce
             this.lbLogContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.copyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.clearToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.lbLogContextMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
             // lbLogContextMenuStrip
             // 
             this.lbLogContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.copyToolStripMenuItem});
+            this.copyToolStripMenuItem,
+            this.toolStripSeparator1,
+            this.clearToolStripMenuItem});
             this.lbLogContextMenuStrip.Name = "lbLogContextMenuStrip";
-            this.lbLogContextMenuStrip.Size = new System.Drawing.Size(103, 26);
+            this.lbLogContextMenuStrip.Size = new System.Drawing.Size(153, 76);
             // 
             // copyToolStripMenuItem
             // 
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(102, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.copyToolStripMenuItem.Text = "Copy";
             this.copyToolStripMenuItem.Click += new System.EventHandler(this.HandleLogCopyClicked);
             // 
@@ -423,6 +334,18 @@ namespace MsCommon.ClickOnce
             // 
             this.contextMenuStrip1.Name = "contextMenuStrip1";
             this.contextMenuStrip1.Size = new System.Drawing.Size(61, 4);
+            // 
+            // clearToolStripMenuItem
+            // 
+            this.clearToolStripMenuItem.Name = "clearToolStripMenuItem";
+            this.clearToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.clearToolStripMenuItem.Text = "Clear";
+            this.clearToolStripMenuItem.Click += new System.EventHandler(this.HandleLogClearClicked);
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(149, 6);
             // 
             // AppForm
             // 
